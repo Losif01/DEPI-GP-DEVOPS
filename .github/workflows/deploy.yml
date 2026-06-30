@@ -1,0 +1,55 @@
+name: NextCloud CICD Pipeline
+
+on:
+  push: 
+    branches:
+      - main
+
+jobs: 
+ 
+  code-validation:
+    name: CI-linting&validation
+    runs-on: ubuntu-latest
+
+    steps: 
+      - name: check-out-repo
+        uses: actions/checkout@v4
+
+
+      - name: ansible-syntax-check
+        run: |
+          ansible-playbook playbook.yml --syntax-check
+
+
+      - name: style-check
+        run: | 
+          pip install ansible-lint 
+          ansible-lint playbook.yml --force-color || echo "lint check completed"
+
+
+      - name: validate-docker-compose
+        run: |
+          docker compose -f files/docker-compose.yml config
+
+
+
+
+
+  deployment: 
+    name: CD-via-ansible
+    needs: code-validation
+    runs-on: self-hosted
+
+    steps: 
+      - name: checkout-repo 
+        uses: actions/checkout@v4
+
+      
+      - name: run-ansible
+        run: |
+          ansible-playbook -i inventory.ini playbook.yml
+
+          
+
+
+      
