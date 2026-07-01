@@ -508,6 +508,6 @@ sudo systemctl restart k3s
 | 1 | k3s cluster bootstrap (single node, Tailscale-reachable) | ✅ Done |
 | 2 | Persistent storage (local-path, PVC Bound, survives pod delete) | ✅ Done |
 | 3 | PostgreSQL (StatefulSet, headless Service, Secret, probes) | ✅ Done |
-| 4 | Nextcloud | _(separate doc)_ |
-| 5 | Tailnet exposure | _(separate doc)_ |
-| 6 | Prometheus + Grafana monitoring | _(separate doc)_ |
+| 4 | Nextcloud | ✅ Done |
+| 5 | Tailnet exposure | ✅ Done |
+| 6 | Prometheus + Grafana monitoring | ✅ Done |
