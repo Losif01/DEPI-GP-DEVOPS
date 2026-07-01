@@ -1,0 +1,78 @@
+# --- Nextcloud Internal Service ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nextcloud-service
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: nextcloud-app
+
+---
+# --- Nextcloud Deployment ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nextcloud-app
+spec:
+  selector:
+    matchLabels:
+      app: nextcloud-app
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: nextcloud-app
+    spec:
+      containers:
+        - name: app
+          image: nextcloud
+          env:
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nextcloud-secrets
+                  key: db-password
+            - name: MYSQL_DATABASE
+              value: nextcloud
+            - name: MYSQL_USER
+              value: nextcloud
+            - name: MYSQL_HOST
+              value: db          # Matches the internal Service name of MariaDB
+            - name: REDIS_HOST
+              value: redis       # Matches the internal Service name of Redis
+            - name: REDIS_HOST_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nextcloud-secrets
+                  key: redis-password
+          volumeMounts:
+            - name: nextcloud-data
+              mountPath: /var/www/html
+      volumes:
+        - name: nextcloud-data
+          hostPath:
+            # Points directly to your existing Docker data volume
+            path: /var/lib/docker/volumes/nextcloud-server_nextcloud_data/_data
+            type: DirectoryOrCreate
+
+---
+# --- Nextcloud Ingress (Traefik) ---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nextcloud-ingress
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nextcloud-service
+                port:
+                  number: 80

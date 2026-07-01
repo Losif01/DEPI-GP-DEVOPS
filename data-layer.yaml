@@ -1,0 +1,98 @@
+# --- MariaDB Service ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+spec:
+  ports:
+    - port: 3306
+  selector:
+    app: nextcloud-db
+
+---
+# --- MariaDB Deployment ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nextcloud-db
+spec:
+  selector:
+    matchLabels:
+      app: nextcloud-db
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: nextcloud-db
+    spec:
+      containers:
+        - name: db
+          image: mariadb:10.11
+          args:
+            - "--transaction-isolation=READ-COMMITTED"
+            - "--binlog-format=ROW"
+            - "--innodb-file-per-table=1"
+            - "--skip-innodb-read-only-compressed"
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nextcloud-secrets
+                  key: db-root-password
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nextcloud-secrets
+                  key: db-password
+            - name: MYSQL_DATABASE
+              value: nextcloud
+            - name: MYSQL_USER
+              value: nextcloud
+          volumeMounts:
+            - name: db-data
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: db-data
+          hostPath:
+            # This points k3s to your existing Docker volume data
+            path: /var/lib/docker/volumes/nextcloud-server_db_data/_data
+            type: DirectoryOrCreate
+
+---
+# --- Redis Service ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  ports:
+    - port: 6379
+  selector:
+    app: nextcloud-redis
+
+---
+# --- Redis Deployment ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nextcloud-redis
+spec:
+  selector:
+    matchLabels:
+      app: nextcloud-redis
+  template:
+    metadata:
+      labels:
+        app: nextcloud-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:alpine
+          args: ["redis-server", "--requirepass", "$(REDIS_PASSWORD)"]
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nextcloud-secrets
+                  key: redis-password
